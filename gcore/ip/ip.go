@@ -3,8 +3,8 @@ package ip
 import (
 	"encoding/json"
 	"fmt"
+	"gcore/utils"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -15,18 +15,14 @@ const (
 
 func GetGcoreIp() *IpList {
 	resp, err := http.Get(ipApi)
-	if err != nil {
-		log.Panicln(err)
-	}
+	utils.Check(err)
+
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Panicln(err)
-	}
+	utils.Check(err)
+
 	var ipList IpList
-	if err = json.Unmarshal(body, &ipList); err != nil {
-		log.Panicln(err)
-	}
+	utils.Check(json.Unmarshal(body, &ipList))
 	return &ipList
 }
 
