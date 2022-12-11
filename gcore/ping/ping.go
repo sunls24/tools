@@ -35,7 +35,7 @@ func init() {
 	http.DefaultClient.Timeout = 15 * time.Second
 }
 
-func PingGcoreIp(count int) {
+func PingGcoreIp(count, limit int, countryCode string) {
 	pingCount = count
 	log.Println("ping count:", pingCount)
 
@@ -89,17 +89,20 @@ func PingGcoreIp(count int) {
 		<-time.After(time.Second)
 	}
 
+	limitCh := make(chan struct{}, limit)
+
 	var finish = make(chan struct{})
 	var resultCh = make(chan result, 100*len(ipListSp))
 	go func() {
 		wg := sync.WaitGroup{}
 		for list := range queryCh {
 			for _, q := range list {
-				if q.CountryCode != "US" {
+				if len(countryCode) != 0 && q.CountryCode != countryCode {
 					continue
 				}
 				wg.Add(1)
-				go pingIp(q, &wg, resultCh)
+				limitCh <- struct{}{}
+				go pingIp(q, &wg, resultCh, limitCh)
 			}
 		}
 		wg.Wait()
@@ -134,7 +137,7 @@ func PingGcoreIp(count int) {
 	}
 }
 
-func pingIp(query queryResult, wg *sync.WaitGroup, ch chan<- result) {
+func pingIp(query queryResult, wg *sync.WaitGroup, ch chan<- result, limitCh <-chan struct{}) {
 	defer wg.Done()
 
 	fmt.Print(query.Query, " ")
@@ -152,6 +155,7 @@ func pingIp(query queryResult, wg *sync.WaitGroup, ch chan<- result) {
 		query: query,
 		stat:  pinger.Statistics(),
 	}
+	<-limitCh
 }
 
 type queryResult struct {
